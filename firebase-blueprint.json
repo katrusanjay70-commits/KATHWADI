@@ -1,0 +1,224 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role-based attributes for Farmers, Land Owners, and Admins",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Auth UID of the user" },
+        "email": { "type": "string", "description": "Email address of user" },
+        "name": { "type": "string", "description": "Full name" },
+        "role": { "type": "string", "enum": ["farmer", "land_owner", "admin"], "description": "Platform role" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "location": { "type": "string", "description": "City, district, or region" },
+        "photoUrl": { "type": "string", "description": "Profile picture URL or data URL" },
+        "farmingExperience": { "type": "string", "description": "Years of farming experience (Farmers only)" },
+        "skills": { "type": "string", "description": "Farming skills or specialties (Farmers only)" },
+        "preferredCrops": { "type": "string", "description": "Preferred crops (Farmers only)" },
+        "farmingStatus": { "type": "string", "description": "Current availability / status (Farmers only)" },
+        "numberOfLands": { "type": "number", "description": "Number of lands owned (Land Owners only)" },
+        "bio": { "type": "string", "description": "Short bio or details" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["userId", "email", "name", "role", "createdAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Admin identifier document",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "description": "Admin user UID" },
+        "email": { "type": "string", "description": "Admin email" },
+        "addedAt": { "type": "string", "description": "Timestamp when added as admin" }
+      },
+      "required": ["adminId", "email"]
+    },
+    "LandListing": {
+      "title": "LandListing",
+      "description": "Farmland listing uploaded by a Land Owner",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Farmland title or name" },
+        "description": { "type": "string", "description": "Detailed description of the land and water source" },
+        "photos": { "type": "array", "description": "Array of image URLs or data URLs" },
+        "location": { "type": "string", "description": "Geographical location or village/district" },
+        "sizeAcres": { "type": "number", "description": "Land size in acres" },
+        "rentAmount": { "type": "number", "description": "Rent or price in rupees" },
+        "rentPeriod": { "type": "string", "description": "per month, per year, or per season" },
+        "soilType": { "type": "string", "description": "Soil type like Black, Alluvial, Red, Clay" },
+        "suitableCrops": { "type": "string", "description": "Suitable crops list" },
+        "isAvailable": { "type": "boolean", "description": "Availability flag" },
+        "waterSource": { "type": "string", "description": "Borewell, Canal, River, Rainfed" },
+        "ownerId": { "type": "string", "description": "UID of the land owner" },
+        "ownerName": { "type": "string", "description": "Name of the land owner" },
+        "ownerPhone": { "type": "string", "description": "Phone of the land owner" },
+        "ownerEmail": { "type": "string", "description": "Email of the land owner" },
+        "status": { "type": "string", "enum": ["active", "under_cultivation", "unavailable"], "description": "Current status" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["title", "location", "sizeAcres", "rentAmount", "soilType", "suitableCrops", "isAvailable", "ownerId", "ownerName", "createdAt"]
+    },
+    "FarmingWork": {
+      "title": "FarmingWork",
+      "description": "Active or completed farming partnership between a farmer and land",
+      "type": "object",
+      "properties": {
+        "landId": { "type": "string", "description": "ID of the land listing" },
+        "landTitle": { "type": "string", "description": "Title of the land" },
+        "landLocation": { "type": "string", "description": "Location of the land" },
+        "landSize": { "type": "number", "description": "Land size in acres" },
+        "landRent": { "type": "number", "description": "Rent amount" },
+        "farmerId": { "type": "string", "description": "UID of the farmer" },
+        "farmerName": { "type": "string", "description": "Name of the farmer" },
+        "farmerEmail": { "type": "string", "description": "Email of the farmer" },
+        "farmerPhone": { "type": "string", "description": "Phone of the farmer" },
+        "ownerId": { "type": "string", "description": "UID of the land owner" },
+        "ownerName": { "type": "string", "description": "Name of the land owner" },
+        "status": { "type": "string", "enum": ["active", "completed", "cancelled"], "description": "Work status" },
+        "cropPlanted": { "type": "string", "description": "Name of crop planted or planned" },
+        "startDate": { "type": "string", "description": "Start date of farming" },
+        "notes": { "type": "string", "description": "Agreed terms or progress notes" },
+        "createdAt": { "type": "string", "description": "Joined timestamp" },
+        "updatedAt": { "type": "string", "description": "Updated timestamp" }
+      },
+      "required": ["landId", "landTitle", "farmerId", "farmerName", "ownerId", "status", "createdAt"]
+    },
+    "InsurancePolicy": {
+      "title": "InsurancePolicy",
+      "description": "Third-party life insurance policy information",
+      "type": "object",
+      "properties": {
+        "policyName": { "type": "string", "description": "Name of the insurance scheme" },
+        "provider": { "type": "string", "description": "Name of the licensed insurance company / Govt authority" },
+        "coverage": { "type": "string", "description": "Coverage amount and details" },
+        "premiumInfo": { "type": "string", "description": "Annual/monthly premium info" },
+        "eligibility": { "type": "string", "description": "Eligibility criteria" },
+        "keyBenefits": { "type": "array", "description": "Bullet points of key benefits" },
+        "providerType": { "type": "string", "description": "Government Scheme or Private Insurer" },
+        "applicationUrl": { "type": "string", "description": "Official partner/regulatory link" },
+        "createdAt": { "type": "string", "description": "Created at" }
+      },
+      "required": ["policyName", "provider", "coverage", "premiumInfo"]
+    },
+    "InsuranceApplication": {
+      "title": "InsuranceApplication",
+      "description": "Insurance inquiry and application filed by a Farmer or Land Owner",
+      "type": "object",
+      "properties": {
+        "policyId": { "type": "string", "description": "Policy ID" },
+        "policyName": { "type": "string", "description": "Policy Name" },
+        "provider": { "type": "string", "description": "Provider Name" },
+        "userId": { "type": "string", "description": "UID of applicant" },
+        "userName": { "type": "string", "description": "Applicant Name" },
+        "userRole": { "type": "string", "description": "farmer or land_owner" },
+        "userEmail": { "type": "string", "description": "Applicant Email" },
+        "userPhone": { "type": "string", "description": "Applicant Phone" },
+        "coverageSelected": { "type": "string", "description": "Selected coverage tier" },
+        "nomineeName": { "type": "string", "description": "Nominee full name" },
+        "nomineeRelation": { "type": "string", "description": "Relation to nominee" },
+        "status": { "type": "string", "enum": ["submitted", "in_review", "approved", "rejected"], "description": "Application status" },
+        "notes": { "type": "string", "description": "Officer / administrative remarks" },
+        "createdAt": { "type": "string", "description": "Submission timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["policyId", "policyName", "userId", "userName", "nomineeName", "nomineeRelation", "status", "createdAt"]
+    },
+    "LoanApplication": {
+      "title": "LoanApplication",
+      "description": "Agricultural loan inquiry / application for farmers",
+      "type": "object",
+      "properties": {
+        "loanSchemeName": { "type": "string", "description": "Loan scheme like Kisan Credit or Equipment Finance" },
+        "provider": { "type": "string", "description": "Lending Institution / Bank" },
+        "userId": { "type": "string", "description": "Farmer UID" },
+        "userName": { "type": "string", "description": "Farmer Name" },
+        "userEmail": { "type": "string", "description": "Farmer Email" },
+        "userPhone": { "type": "string", "description": "Farmer Phone" },
+        "amountRequested": { "type": "number", "description": "Requested loan amount in INR" },
+        "purpose": { "type": "string", "description": "Seed purchase, tractor, irrigation, land rent" },
+        "tenureMonths": { "type": "number", "description": "Repayment tenure in months" },
+        "landReference": { "type": "string", "description": "Farmland reference or acreage" },
+        "status": { "type": "string", "enum": ["submitted", "under_review", "recommended", "rejected"], "description": "Status" },
+        "remarks": { "type": "string", "description": "Review remarks" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["loanSchemeName", "userId", "userName", "amountRequested", "purpose", "status", "createdAt"]
+    },
+    "SeedSupportRequest": {
+      "title": "SeedSupportRequest",
+      "description": "High-yield / subsidized seed support request for farmers",
+      "type": "object",
+      "properties": {
+        "cropType": { "type": "string", "description": "Crop or seed variety like Paddy MTU-1010, Wheat HD-2967, Cotton" },
+        "quantityBags": { "type": "number", "description": "Quantity in bags or quintals" },
+        "season": { "type": "string", "description": "Kharif, Rabi, or Zaid" },
+        "userId": { "type": "string", "description": "Farmer UID" },
+        "userName": { "type": "string", "description": "Farmer Name" },
+        "userEmail": { "type": "string", "description": "Farmer Email" },
+        "userPhone": { "type": "string", "description": "Farmer Phone" },
+        "deliveryAddress": { "type": "string", "description": "Delivery address or panchayat center" },
+        "status": { "type": "string", "enum": ["submitted", "approved", "dispatched", "completed", "cancelled"], "description": "Status" },
+        "notes": { "type": "string", "description": "Fulfillment notes" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["cropType", "quantityBags", "season", "userId", "userName", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time user notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Recipient UID" },
+        "title": { "type": "string", "description": "Notification title" },
+        "message": { "type": "string", "description": "Notification message body" },
+        "type": { "type": "string", "description": "Category: land, work, insurance, loan, seed, system" },
+        "read": { "type": "boolean", "description": "Whether read by user" },
+        "link": { "type": "string", "description": "Navigation link" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile with role-based details"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Authorized administrators"
+    },
+    "/lands/{landId}": {
+      "schema": "LandListing",
+      "description": "Farmland listings uploaded by land owners"
+    },
+    "/farming_works/{workId}": {
+      "schema": "FarmingWork",
+      "description": "Farming agreements and engagements"
+    },
+    "/insurance_policies/{policyId}": {
+      "schema": "InsurancePolicy",
+      "description": "Available life insurance policy catalog"
+    },
+    "/insurance_applications/{applicationId}": {
+      "schema": "InsuranceApplication",
+      "description": "Insurance inquiries and status"
+    },
+    "/loan_applications/{loanId}": {
+      "schema": "LoanApplication",
+      "description": "Agricultural loan applications"
+    },
+    "/seed_support_requests/{requestId}": {
+      "schema": "SeedSupportRequest",
+      "description": "Seed support inquiries"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "In-app notifications"
+    }
+  }
+}

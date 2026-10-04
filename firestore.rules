@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email != null && request.auth.token.email.matches('(?i)^katrusanjay70@gmail[.]com$')) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Connection test collection
+    match /test/{testId} {
+      allow read, write: if true;
+    }
+
+    // Users collection: signed-in users can view profiles and create/update their own profile
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin() || (userId in ['seed_owner_1', 'seed_owner_2', 'seed_owner_3', 'demo_farmer_user', 'demo_land_owner_user']);
+    }
+
+    // Admins collection: staff admin management
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      allow create, update: if isSignedIn() && (
+        request.auth.uid == adminId ||
+        isAdmin() ||
+        (request.auth.token.email != null && request.auth.token.email.matches('(?i)^katrusanjay70@gmail[.]com$'))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Farmland listings: public read, owners can create/manage
+    match /lands/{landId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid) || (resource.data.ownerId in ['seed_owner_1', 'seed_owner_2', 'seed_owner_3', 'seed_owner_warangal', 'seed_owner_guntur']);
+    }
+
+    // Farming Work partnerships
+    match /farming_works/{workId} {
+      allow read: if isSignedIn() && (
+        resource.data.farmerId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.farmerId == request.auth.uid ||
+        request.resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update: if isSignedIn() && (
+        resource.data.farmerId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.farmerId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Insurance Policies catalog: public read, self-initializing policies
+    match /insurance_policies/{policyId} {
+      allow read: if true;
+      allow create: if isSignedIn() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Insurance Applications
+    match /insurance_applications/{applicationId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Loan Applications
+    match /loan_applications/{loanId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Seed Support Requests
+    match /seed_support_requests/{requestId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Notifications: in-app alerts and system messages
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if true;
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Reports & Moderation
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

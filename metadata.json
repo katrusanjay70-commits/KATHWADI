@@ -1,0 +1,8 @@
+{
+  "name": "KETHWADI",
+  "description": "The Agriculture Platform connecting Farmers and Land Owners for farmland discovery, cultivation partnerships, agricultural loans, seed support, and life insurance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
