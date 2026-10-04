@@ -26,6 +26,7 @@ function MainApp() {
   const [currentPage, setCurrentPage] = useState<string>('landing');
   const [selectedLandId, setSelectedLandId] = useState<string | null>(null);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'admin' | null>(null);
+  const [accessWarningToast, setAccessWarningToast] = useState<string | null>(null);
 
   // Farmlands live cache
   const [allLands, setAllLands] = useState<LandListing[]>([]);
@@ -97,7 +98,15 @@ function MainApp() {
 
   const handleNavigate = (page: string, params?: any) => {
     if (page === 'admin_login') {
-      if (currentUser && (userProfile?.role === 'admin' || currentUser.email === 'katrusanjay70@gmail.com')) {
+      // Prevent farmers and land owners from ever accessing admin
+      if (currentUser && (userProfile?.role === 'farmer' || userProfile?.role === 'land_owner')) {
+        setAccessWarningToast(
+          `Access Denied: You are signed in as a registered ${userProfile.role === 'farmer' ? 'Farmer' : 'Land Owner'}. Farmers and Land Owners cannot log in or access the Admin Portal.`
+        );
+        setTimeout(() => setAccessWarningToast(null), 5000);
+        return;
+      }
+      if (currentUser && isAdmin) {
         setCurrentPage('admin_dashboard');
       } else {
         setAuthModalMode('admin');
@@ -123,7 +132,7 @@ function MainApp() {
 
   const handleAuthSuccess = (role: UserRole) => {
     setAuthModalMode(null);
-    if (role === 'admin' || userProfile?.role === 'admin' || currentUser?.email === 'katrusanjay70@gmail.com') {
+    if (role === 'admin' && currentUser?.email?.toLowerCase() === 'katrusanjay70@gmail.com') {
       setCurrentPage('admin_dashboard');
     } else if (role === 'land_owner' || userProfile?.role === 'land_owner') {
       setCurrentPage('landowner_dashboard');
@@ -155,10 +164,10 @@ function MainApp() {
     );
   }
 
-  // Role guarding
+  // Strict role guarding: Farmers and Land Owners can NEVER be admin
   const isFarmer = userProfile?.role === 'farmer';
   const isLandOwner = userProfile?.role === 'land_owner';
-  const isAdmin = userProfile?.role === 'admin' || currentUser?.email === 'katrusanjay70@gmail.com';
+  const isAdmin = !isFarmer && !isLandOwner && (currentUser?.email?.toLowerCase() === 'katrusanjay70@gmail.com' || (userProfile?.role === 'admin' && currentUser?.email?.toLowerCase() === 'katrusanjay70@gmail.com'));
 
   const renderContent = () => {
     if (loading) {
@@ -331,6 +340,22 @@ function MainApp() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fbfdfa] text-gray-900 font-sans selection:bg-emerald-200 selection:text-emerald-950">
+      {/* Access Denied Warning Toast */}
+      {accessWarningToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[92%] bg-red-900/95 text-white p-4 rounded-2xl shadow-2xl border border-red-500 backdrop-blur-xs flex items-center justify-between gap-3 text-xs sm:text-sm animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+            <span className="font-semibold">{accessWarningToast}</span>
+          </div>
+          <button
+            onClick={() => setAccessWarningToast(null)}
+            className="text-red-200 hover:text-white font-black text-base px-1.5 leading-none shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Hide public Navbar/Footer when in full Admin Dashboard workspace */}
       {currentPage !== 'admin_dashboard' && (
         <Navbar

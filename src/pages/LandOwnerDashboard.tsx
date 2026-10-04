@@ -871,14 +871,26 @@ export const LandOwnerDashboard: React.FC<LandOwnerDashboardProps> = ({
 
                   <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
                     <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>{work.farmerPhone || 'Registered Farmer Phone'}</span>
+                      <Phone className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      {work.farmerPhone ? (
+                        <a
+                          href={`tel:${work.farmerPhone}`}
+                          className="font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1.5"
+                        >
+                          <span>{work.farmerPhone}</span>
+                          <span className="text-[10px] bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded-full transition">
+                            Call Farmer
+                          </span>
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">Contact via KETHWADI</span>
+                      )}
                     </div>
                     <button
                       onClick={() => onSelectLand(work.landId)}
                       className="text-emerald-700 font-bold hover:underline"
                     >
-                      Inspect Farmland Listing →
+                      Inspect Listing →
                     </button>
                   </div>
                 </div>

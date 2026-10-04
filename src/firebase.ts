@@ -2,7 +2,24 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer, setLogLevel } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import firebaseConfig from '../firebase-applet-config.json';
+// Safely load local config if present in the workspace (kept in .gitignore to avoid committing secrets to GitHub)
+const localConfigs = import.meta.glob('../firebase-applet-config.json', { eager: true });
+const localConfigModule = (localConfigs['../firebase-applet-config.json'] as any) || {};
+const localConfig = localConfigModule.default || localConfigModule || {};
+
+// Read Vite environment variables (standard for production deployments: Vercel, Netlify, Cloud Run, GitHub Pages)
+const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : ({} as any);
+
+export const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY || localConfig.apiKey || '',
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || localConfig.authDomain || 'kaka-b8837.firebaseapp.com',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || localConfig.projectId || 'kaka-b8837',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || localConfig.storageBucket || 'kaka-b8837.firebasestorage.app',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || localConfig.messagingSenderId || '77980414963',
+  appId: env.VITE_FIREBASE_APP_ID || localConfig.appId || '1:77980414963:web:5ed6578ea22b7bb4b7d886',
+  firestoreDatabaseId: env.VITE_FIREBASE_DATABASE_ID || localConfig.firestoreDatabaseId || 'ai-studio-kethwadi-dfdfe6e3-3612-4864-b1cf-f4cb827ab15c',
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || localConfig.measurementId || '',
+};
 
 // Suppress internal Firestore connection retry noise in sandboxed/offline environments
 setLogLevel('error');
@@ -19,8 +36,14 @@ if (typeof window !== 'undefined') {
   }).catch(() => {});
 }
 
-// CRITICAL: The app will break without specifying firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// CRITICAL: Connect to designated Firestore database ID
+const dbId =
+  firebaseConfig.firestoreDatabaseId &&
+  firebaseConfig.firestoreDatabaseId !== '(default)'
+    ? firebaseConfig.firestoreDatabaseId
+    : undefined;
+
+export const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
 export const auth = getAuth(app);
 
 // Test Firestore connection on boot as mandated by skill

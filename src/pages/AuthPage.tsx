@@ -12,8 +12,10 @@ import {
   ShieldCheck,
   LayoutDashboard
 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../types';
+import { UserRole, UserProfile } from '../types';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register' | 'admin';
@@ -22,7 +24,7 @@ interface AuthPageProps {
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onSuccess, onCancel }) => {
-  const { loginWithEmail, registerWithEmail, loginWithGoogle, loginAsDemo } = useAuth();
+  const { loginWithEmail, registerWithEmail, loginWithGoogle, loginAsDemo, logout } = useAuth();
   const [mode, setMode] = useState<'login' | 'register' | 'admin'>(initialMode);
   const [role, setRole] = useState<UserRole>('farmer');
 
@@ -50,13 +52,44 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onSuc
         await registerWithEmail(email.trim(), password, name.trim(), role, phone.trim(), location.trim());
         onSuccess(role);
       } else if (mode === 'admin') {
-        if (!email.trim() || !password) throw new Error('Please enter admin email and password');
-        await loginWithEmail(email.trim(), password);
+        const adminEmail = 'katrusanjay70@gmail.com';
+        if (!password) throw new Error('Please enter the administrator password');
+        
+        await loginWithEmail(adminEmail, password);
+
+        // Security check: Verify that this account is not registered as a farmer or land owner
+        const currentUid = auth.currentUser?.uid;
+        if (!currentUid) throw new Error('Authentication failed');
+        const snap = await getDoc(doc(db, 'users', currentUid));
+        const prof = snap.data() as UserProfile | undefined;
+        if (prof?.role === 'farmer' || prof?.role === 'land_owner') {
+          await logout();
+          throw new Error(`Access Denied: Your account is registered as a ${prof.role === 'farmer' ? 'Farmer' : 'Land Owner'}. Farmers and Land Owners cannot log in as Admin.`);
+        }
+        if (auth.currentUser?.email?.toLowerCase() !== 'katrusanjay70@gmail.com') {
+          await logout();
+          throw new Error('Access Denied: Unauthorized admin credentials. Only katrusanjay70@gmail.com can log in as Admin.');
+        }
         onSuccess('admin');
       } else {
         if (!email.trim() || !password) throw new Error('Please enter both email and password');
         await loginWithEmail(email.trim(), password);
-        onSuccess(role);
+
+        // Route to actual registered role in database to prevent unauthorized access
+        const currentUid = auth.currentUser?.uid;
+        if (currentUid) {
+          const snap = await getDoc(doc(db, 'users', currentUid));
+          const prof = snap.data() as UserProfile | undefined;
+          if (prof?.role === 'admin' && auth.currentUser?.email?.toLowerCase() === 'katrusanjay70@gmail.com') {
+            onSuccess('admin');
+          } else if (prof?.role === 'land_owner') {
+            onSuccess('land_owner');
+          } else {
+            onSuccess('farmer');
+          }
+        } else {
+          onSuccess(role);
+        }
       }
     } catch (err: any) {
       const isOpNotAllowed =
@@ -105,6 +138,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onSuc
   };
 
   const handleDemoSignIn = (targetRole: UserRole) => {
+    if (targetRole === 'admin' && mode !== 'admin') {
+      setErrorMessage('Access Denied: Admin access is restricted. Farmers and Land Owners cannot log in as Admin.');
+      return;
+    }
     loginAsDemo(targetRole);
     onSuccess(targetRole);
   };
@@ -281,22 +318,42 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onSuc
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-emerald-950 mb-1">
-              {mode === 'admin' ? 'Administrator Email' : 'Email Address'} <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-emerald-600 absolute left-3 top-3" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="katrusanjay70@gmail.com"
-                className="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-              />
+          {mode === 'admin' ? (
+            <div>
+              <label className="block text-xs font-semibold text-emerald-950 mb-1">
+                Authorized Admin Email <span className="text-amber-700 font-bold">(Restricted)</span>
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-emerald-600 absolute left-3 top-3" />
+                <input
+                  type="email"
+                  readOnly
+                  value="katrusanjay70@gmail.com"
+                  className="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-amber-300 bg-amber-50/70 text-amber-950 font-bold focus:outline-none cursor-not-allowed"
+                />
+              </div>
+              <p className="text-[11px] text-amber-800 font-medium mt-1">
+                Admin portal is strictly restricted to Katru Sanjay. Farmers and Land Owners cannot log in as Admin.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-semibold text-emerald-950 mb-1">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-emerald-600 absolute left-3 top-3" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-emerald-950 mb-1">
@@ -427,32 +484,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onSuc
         <div className="mt-5 pt-4 border-t border-gray-100">
           <div className="text-center mb-2">
             <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-              Quick Test / Demo Access
+              {mode === 'admin' ? 'Authorized Admin Test Access' : 'Quick Demo Access'}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoSignIn('farmer')}
-              className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold transition text-center"
-            >
-              Demo Farmer
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoSignIn('land_owner')}
-              className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold transition text-center"
-            >
-              Demo Owner
-            </button>
+          {mode === 'admin' ? (
             <button
               type="button"
               onClick={() => handleDemoSignIn('admin')}
-              className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition text-center"
+              className="w-full py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
             >
-              Demo Admin
+              <ShieldCheck className="w-4 h-4 text-amber-700" />
+              <span>Demo Admin (Katru Sanjay)</span>
             </button>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('farmer')}
+                className="py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold transition text-center"
+              >
+                Demo Farmer
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('land_owner')}
+                className="py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold transition text-center"
+              >
+                Demo Land Owner
+              </button>
+            </div>
+          )}
         </div>
 
         {onCancel && (

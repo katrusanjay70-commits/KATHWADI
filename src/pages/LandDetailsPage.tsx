@@ -53,11 +53,18 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
   // Join land modal state
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [cropPlanted, setCropPlanted] = useState('');
+  const [farmerPhoneInput, setFarmerPhoneInput] = useState(userProfile?.phone || '');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [farmerNotes, setFarmerNotes] = useState('');
   const [submittingJoin, setSubmittingJoin] = useState(false);
   const [joinSuccess, setJoinSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (userProfile?.phone) {
+      setFarmerPhoneInput(userProfile.phone);
+    }
+  }, [userProfile]);
 
   useEffect(() => {
     async function fetchLand() {
@@ -94,8 +101,10 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
     setSubmittingJoin(true);
     setErrorMessage('');
 
+    const effectivePhone = farmerPhoneInput.trim() || userProfile.phone || '';
+
     try {
-      // 1. Create FarmingWork record
+      // 1. Create FarmingWork record (always authoritatively records cultivation partnership / request)
       const workData: Omit<FarmingWork, 'id'> = {
         landId: land.id,
         landTitle: land.title,
@@ -105,49 +114,67 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
         farmerId: currentUser.uid,
         farmerName: userProfile.name || currentUser.displayName || 'Farmer Cultivator',
         farmerEmail: currentUser.email || '',
-        farmerPhone: userProfile.phone || '',
+        farmerPhone: effectivePhone,
         ownerId: land.ownerId,
         ownerName: land.ownerName,
         ownerPhone: land.ownerPhone || '',
         status: 'active',
         cropPlanted: cropPlanted.trim(),
         startDate: startDate || new Date().toISOString().split('T')[0],
-        notes: farmerNotes.trim() || 'Cultivation partnership initiated via KETHWADI.',
+        notes: farmerNotes.trim() || 'Cultivation partnership request initiated via KETHWADI.',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       await addDoc(collection(db, 'farming_works'), workData);
 
-      // 2. Optionally update land status
-      await updateDoc(doc(db, 'lands', land.id), {
-        status: 'under_cultivation',
-        updatedAt: new Date().toISOString(),
-      });
+      // 2. Update land status safely (non-blocking so any land doc rule boundary doesn't prevent partnership)
+      try {
+        await updateDoc(doc(db, 'lands', land.id), {
+          status: 'under_cultivation',
+          activeFarmerId: currentUser.uid,
+          activeFarmerName: userProfile.name || 'Partner Farmer',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (landSyncErr) {
+        console.warn('Notice: Land listing status update handled safely:', landSyncErr);
+      }
 
       // 3. Notify Land Owner
-      await createNotification(
-        land.ownerId,
-        'Farmer Joined Your Farmland!',
-        `Farmer ${userProfile.name} has joined "${land.title}" for cultivating ${cropPlanted.trim()}. View under Working Farmers.`,
-        'work',
-        'landowner_farmers'
-      );
+      try {
+        await createNotification(
+          land.ownerId,
+          'New Cultivation Request Received!',
+          `Farmer ${userProfile.name} (${effectivePhone ? 'Phone: ' + effectivePhone : 'Registered'}) has submitted a cultivation request for "${land.title}" to grow ${cropPlanted.trim()}. Check Working Farmers & Requests.`,
+          'work',
+          'landowner_farmers'
+        );
+      } catch (notifErr) {
+        console.warn('Owner notification logged:', notifErr);
+      }
 
       // 4. Notify Farmer
-      await createNotification(
-        currentUser.uid,
-        'Farmland Cultivation Started',
-        `You have successfully partnered on "${land.title}". Track progress in My Farming Work.`,
-        'work',
-        'farming_work'
-      );
+      try {
+        await createNotification(
+          currentUser.uid,
+          'Cultivation Request Transmitted',
+          `Your cultivation request for "${land.title}" has been transmitted to landowner ${land.ownerName}. Track progress in My Farming Work.`,
+          'work',
+          'farming_work'
+        );
+      } catch (notifErr) {
+        console.warn('Farmer notification logged:', notifErr);
+      }
 
       setJoinSuccess(true);
     } catch (err: any) {
-      console.error(err);
-      handleFirestoreError(err, OperationType.CREATE, 'farming_works');
-      setErrorMessage('Could not record farming work. Please check your network and try again.');
+      console.error('Failed to send request to landowner:', err);
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'farming_works');
+      } catch (diag) {
+        console.warn('Diagnostic handled:', diag);
+      }
+      setErrorMessage('Could not send request to landowner. Please verify your connection and try again.');
     } finally {
       setSubmittingJoin(false);
     }
@@ -418,10 +445,10 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
                   className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl text-sm transition shadow-md shadow-emerald-700/20 flex items-center justify-center gap-2"
                 >
                   <Sprout className="w-5 h-5 text-emerald-200" />
-                  <span>{land.isAvailable ? 'Join as Farmer / Work on this Land' : 'Currently Under Cultivation'}</span>
+                  <span>{land.isAvailable ? 'Send Cultivation Request to Landowner' : 'Currently Under Cultivation'}</span>
                 </button>
                 <p className="text-[11px] text-center text-gray-500 leading-tight">
-                  Upon joining, this land will be saved under your active <strong>My Farming Work</strong> and the owner will be notified.
+                  Send a cultivation request directly to landowner <strong>{land.ownerName}</strong>. Track your progress in <strong>My Farming Work</strong>.
                 </p>
               </div>
             )}
@@ -450,10 +477,10 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
                   <CheckCircle2 className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-black text-emerald-950 font-serif">
-                  Cultivation Partnership Confirmed!
+                  Cultivation Request Sent!
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto leading-relaxed">
-                  You are now partnered on <strong>"{land.title}"</strong> to cultivate <strong>{cropPlanted}</strong>. The land owner has been notified.
+                  Your request to cultivate <strong>{cropPlanted}</strong> on <strong>"{land.title}"</strong> has been transmitted to landowner <strong>{land.ownerName}</strong>.
                 </p>
                 <div className="pt-4 flex flex-col sm:flex-row gap-3">
                   <button
@@ -477,13 +504,13 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
               <form onSubmit={handleConfirmJoin} className="space-y-5">
                 <div className="space-y-1">
                   <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                    Farming Agreement Initiation
+                    Cultivation Partnership Proposal
                   </div>
                   <h3 className="text-xl font-black text-gray-900 font-serif">
-                    Join "{land.title}"
+                    Request Cultivation on "{land.title}"
                   </h3>
                   <p className="text-xs text-gray-500">
-                    {land.sizeAcres} Acres in {land.location} • ₹{land.rentAmount.toLocaleString()}/{land.rentPeriod}
+                    {land.sizeAcres} Acres in {land.location} • ₹{land.rentAmount.toLocaleString()}/{land.rentPeriod} • Owner: {land.ownerName}
                   </p>
                 </div>
 
@@ -511,10 +538,30 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
                   </p>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
+                    Your Contact Phone Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-emerald-600 absolute left-3 top-3" />
+                    <input
+                      type="tel"
+                      required
+                      value={farmerPhoneInput}
+                      onChange={(e) => setFarmerPhoneInput(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="w-full text-xs sm:text-sm pl-9 pr-3.5 py-2.5 rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Landowner {land.ownerName} will reach out directly on this phone number.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-800 mb-1">
-                      Cultivation Start Date
+                      Target Start Date
                     </label>
                     <input
                       type="date"
@@ -539,13 +586,13 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">
-                    Notes or Agreement Terms (Optional)
+                    Proposal Terms / Message to Owner (Optional)
                   </label>
                   <textarea
                     rows={2}
                     value={farmerNotes}
                     onChange={(e) => setFarmerNotes(e.target.value)}
-                    placeholder="Mention season duration, water usage schedule, or harvest sharing details..."
+                    placeholder="Mention season duration, water usage schedule, harvest sharing, or payment terms..."
                     className="w-full text-xs sm:text-sm px-3.5 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                   />
                 </div>
@@ -567,7 +614,7 @@ export const LandDetailsPage: React.FC<LandDetailsPageProps> = ({
                     {submittingJoin && (
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     )}
-                    <span>Confirm & Join Farmland</span>
+                    <span>Send Request to Land Owner</span>
                   </button>
                 </div>
               </form>

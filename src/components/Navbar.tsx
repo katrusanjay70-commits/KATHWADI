@@ -66,6 +66,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenA
 
   const handleRoleSwitch = async (newRole: UserRole) => {
     if (!userProfile) return;
+    if (newRole === 'admin' && currentUser?.email?.toLowerCase() !== 'katrusanjay70@gmail.com') {
+      return;
+    }
     await updateUserProfile({ role: newRole });
     setRoleDropdownOpen(false);
     if (newRole === 'farmer') onNavigate('farmer_dashboard');
@@ -75,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenA
 
   const isFarmer = userProfile?.role === 'farmer';
   const isLandOwner = userProfile?.role === 'land_owner';
-  const isAdmin = userProfile?.role === 'admin' || currentUser?.email === 'katrusanjay70@gmail.com';
+  const isAdmin = !isFarmer && !isLandOwner && currentUser?.email?.toLowerCase() === 'katrusanjay70@gmail.com';
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 shadow-xs">
@@ -313,7 +316,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenA
                           <span>Land Owner View</span>
                           {userProfile?.role === 'land_owner' && <span className="text-emerald-600">✓</span>}
                         </button>
-                        {(isAdmin || currentUser?.email === 'katrusanjay70@gmail.com') && (
+                        {isAdmin && (
                           <button
                             onClick={() => handleRoleSwitch('admin')}
                             className={`w-full text-left px-3 py-2 hover:bg-amber-50 flex items-center justify-between text-amber-900 ${
